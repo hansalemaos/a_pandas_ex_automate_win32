@@ -11,6 +11,7 @@ import pandas as pd
 
 from flatten_everything import flatten_everything
 
+
 childcounter = sys.modules[__name__]
 childcounter.rightnow = None
 
@@ -113,7 +114,7 @@ def find_elements():
                         filepath,
                     )
                 )
-            )  # return result
+            )
             return True
 
         user32.EnumWindows(enum_proc, 0)
@@ -222,9 +223,6 @@ def find_elements():
         yield from code(baba)
 
     result = []
-
-    get_window_infos_all()
-
     allpr = []
     getta = list(
         set(list(flatten_everything(([x.hwnd for x in get_window_infos_all()]))))
@@ -273,7 +271,7 @@ def find_elements():
         if len(allpr) == altla:
             break
 
-    allpr = list(set(list(flatten_everything(allpr))))
+    allpr = list(set((flatten_everything(allpr))))
 
     for buda in allpr:
         childcounter.rightnow = buda
@@ -281,12 +279,18 @@ def find_elements():
         for u in yieldstuff(buda):
 
             try:
-                if u is None:
+                if not u:
                     continue
-
-                enum_proc2(u, 0)
+                if not isinstance(u, list):
+                    u = [u]
+                    for _i in u:
+                        try:
+                            enum_proc2(_i, 0)
+                        except Exception:
+                            continue
 
             except Exception as bh:
+                # raise bh
                 continue
 
     df = (
@@ -297,14 +301,6 @@ def find_elements():
     )
     return df
 
+
 def pd_add_automate_win32():
     pd.Q_get_automate32_df = find_elements
-
-
-# from PrettyColorPrinter import add_printer
-#
-# add_printer(True)
-# df = find_elements()
-# print(df)
-#
-# # df = pd.DataFrame(allchi)
