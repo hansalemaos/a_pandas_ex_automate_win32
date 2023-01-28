@@ -3,20 +3,22 @@ from ctypes import py_object, WINFUNCTYPE
 from ctypes.wintypes import BOOL, HWND, LPARAM
 
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from ctypes import wintypes, byref
 import ctypes
 from ctypes import windll
 import pandas as pd
 
 from flatten_everything import flatten_everything
+from a_pandas_ex_apply_ignore_exceptions import pd_add_apply_ignore_exceptions
 
+pd_add_apply_ignore_exceptions()
 
 childcounter = sys.modules[__name__]
 childcounter.rightnow = None
 
 
-def find_elements():
+def find_elements(pid_=0):
 
     user32 = ctypes.WinDLL("user32")
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -50,7 +52,6 @@ def find_elements():
 
     def get_window_infos_all():
         """Return a sorted list of visible windows."""
-        # result = []
 
         @WNDENUMPROCA
         def enum_proc(hWnd, lParam):
@@ -59,6 +60,11 @@ def find_elements():
                 status = "visible"
             pid = wintypes.DWORD()
             tid = user32.GetWindowThreadProcessId(hWnd, ctypes.byref(pid))
+            if pid_ == 0:
+                pass
+            else:
+                if pid.value != pid_:
+                    return True
             length = user32.GetWindowTextLengthW(hWnd) + 1
             title = ctypes.create_unicode_buffer(length)
             user32.GetWindowTextW(hWnd, title, length)
@@ -127,6 +133,11 @@ def find_elements():
             status = "visible"
         pid = wintypes.DWORD()
         tid = user32.GetWindowThreadProcessId(hWnd, ctypes.byref(pid))
+        if pid_ == 0:
+            pass
+        else:
+            if pid.value != pid_:
+                return True
         length = user32.GetWindowTextLengthW(hWnd) + 1
         title = ctypes.create_unicode_buffer(length)
         user32.GetWindowTextW(hWnd, title, length)
@@ -272,7 +283,7 @@ def find_elements():
             break
 
     allpr = list(set((flatten_everything(allpr))))
-
+    daxs = defaultdict(list)
     for buda in allpr:
         childcounter.rightnow = buda
 
@@ -283,9 +294,11 @@ def find_elements():
                     continue
                 if not isinstance(u, list):
                     u = [u]
+
                     for _i in u:
                         try:
                             enum_proc2(_i, 0)
+                            daxs[buda].append(_i)
                         except Exception:
                             continue
 
@@ -298,8 +311,19 @@ def find_elements():
         .drop_duplicates()
         .sort_values(by=["pid", "coords_win"], ascending=[True, False])
         .reset_index(drop=True)
+    ).copy()
+    df["all_children"] = pd.NA
+    df["all_children"] = df["all_children"].astype("object")
+    for key, item in daxs.items():
+        baxa = df.loc[(df.hwnd == key)]
+        newwar = [tuple(flatten_everything(item))]
+        for i in baxa.index:
+            df.at[i, "all_children"] = newwar
+
+    df["all_children"] = df["all_children"].ds_apply_ignore(
+        pd.NA, lambda x: tuple(set(x[0]))
     )
-    return df
+    return df.copy()
 
 
 def pd_add_automate_win32():
